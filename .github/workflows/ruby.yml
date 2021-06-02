@@ -1,0 +1,53 @@
+name: Ruby
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        ruby-version: ['3.0']
+        orm: [active_record]
+        db_adapter: [sqlite3, mysql2, postgresql]
+        include:
+          - orm: mongoid
+            db_adapter: mongodb
+
+    services:
+      mongodb:
+        image: mongo:4.2
+        ports:
+        # will assign a random free host port
+          - 27017/tcp
+
+      postgres:
+        image: postgres:10.8
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+        # will assign a random free host port
+        - 5432/tcp
+        # needed because the postgres container does not provide a healthcheck
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}:w
+      - name: Install dependencies
+        run: bundle install
+      - name: Run tests
+        run: bundle exec rake
+
+
